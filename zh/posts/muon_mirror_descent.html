@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deriving Muon From Mirror Descent: The Proximal Geometry Behind Orthogonalization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+:root{
+  --bg:#fafaf9; --card:#ffffff; --fg:#18181b; --muted:#71717a;
+  --brand:#4f46e5; --brand-soft:#eef2ff; --brand-border:#e0e7ff;
+  --accent:#0d9488; --border:#e7e5e4; --code-bg:#f5f5f4;
+}
+@media(prefers-color-scheme:light){
+  :root{
+  --bg:#f3f6f9;       /* 背景同步微调，保持层次 */
+  --border:#e8edf3;   /* 边框更淡、更冷 */
+  --code-bg:#f7fafc;  /* 表头底色接近白，只留一丝冷调 */
+}
+
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:'Inter','Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  font-size:16px;line-height:1.85;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 85%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.topbar-inner{max-width:960px;margin:0 auto;padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:800;font-size:1.05em;letter-spacing:-0.01em}
+.logo span{color:var(--brand)}
+.topbar nav{display:flex;gap:22px;font-size:0.88em;color:var(--muted)}
+.topbar nav a{color:var(--muted)}
+.topbar nav a:hover{color:var(--fg)}
+
+/* 文章容器 */
+main{max-width:760px;margin:0 auto;padding:48px 24px 96px}
+
+/* 顶部日期 */
+.meta-date{color:var(--muted);font-size:0.85em;margin-bottom:18px;
+  font-variant-numeric:tabular-nums}
+
+h1{font-size:1.85em;line-height:1.4;font-weight:800;letter-spacing:-0.02em;
+  margin:0 0 16px}
+@media(max-width:640px){h1{font-size:1.45em}}
+
+/* Lead 导语 */
+.lead{font-size:1.08em;color:var(--muted);line-height:1.9;
+  border-left:3px solid var(--brand);padding:2px 0 2px 18px;margin:0 0 40px}
+.lead strong{color:var(--fg)}
+
+h2{font-size:1.42em;font-weight:700;margin:3em 0 1em;letter-spacing:-0.01em;
+  scroll-margin-top:80px}
+h3{font-size:1.08em;font-weight:700;margin:2.2em 0 0.8em;color:var(--fg)}
+p{margin:1em 0;text-align:justify}
+strong{font-weight:700}
+em{font-style:normal;color:var(--brand);font-weight:600}
+
+/* 要点列表 */
+ul.points{list-style:none;padding:0;margin:1.2em 0}
+ul.points li{position:relative;padding-left:22px;margin:0.8em 0}
+ul.points li::before{content:'';position:absolute;left:4px;top:0.85em;
+  width:6px;height:6px;border-radius:50%;background:var(--brand)}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:1.4em 0}
+ol.steps li{counter-increment:s;position:relative;padding-left:40px;margin:1em 0}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:4px;
+  width:24px;height:24px;border-radius:8px;background:var(--brand-soft);
+  color:var(--brand);font-weight:700;font-size:0.8em;
+  display:flex;align-items:center;justify-content:center}
+
+/* callout / 问题框 */
+.callout{margin:1.8em 0;padding:18px 22px;background:var(--card);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:12px}
+.callout .cap{font-size:0.78em;font-weight:700;color:var(--accent);
+  letter-spacing:0.08em;margin-bottom:6px}
+.callout p{margin:0.4em 0}
+.question{margin:2em 0;padding:22px 26px;background:var(--brand-soft);
+  border:1px solid var(--brand-border);border-radius:14px;text-align:center;
+  font-weight:600;font-size:1.04em}
+.question p{margin:0;text-align:center}
+
+/* 公式 */
+mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;padding:2px 0}
+.formula-tag{display:block;text-align:center;color:var(--muted);font-size:0.85em;
+  margin-top:-6px;margin-bottom:1em;font-family:'JetBrains Mono',monospace}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;margin:1.8em 0;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;font-size:0.92em}
+th,td{padding:11px 16px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--code-bg);font-weight:600;color:var(--muted);
+  font-size:0.88em;letter-spacing:0.03em}
+tr:last-child td{border-bottom:none}
+tr.hl td{background:var(--brand-soft);font-weight:600}
+td:first-child{font-family:'JetBrains Mono',monospace;font-size:0.95em}
+
+blockquote{margin:1.6em 0;padding:14px 22px;background:var(--card);
+  border-left:3px solid var(--brand);border-radius:0 10px 10px 0}
+blockquote p{margin:0}
+
+/* 结语 / 致谢 */
+.closing{margin-top:3em;padding-top:2em;border-top:1px solid var(--border)}
+.ack{background:var(--code-bg);border:1px solid var(--border);
+  border-radius:12px;padding:20px 24px;margin-top:2em;font-size:0.92em}
+.ack h3{margin-top:0}
+footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);
+  color:var(--muted);font-size:0.84em;text-align:center}
+
+/* 回到顶部 */
+.totop{position:fixed;right:24px;bottom:24px;width:40px;height:40px;
+  border-radius:10px;background:var(--card);border:1px solid var(--border);
+  color:var(--muted);display:flex;align-items:center;justify-content:center;
+  font-size:1.1em;box-shadow:0 2px 8px rgba(0,0,0,.06);opacity:0;
+  pointer-events:none;transition:opacity .2s}
+.totop.show{opacity:1;pointer-events:auto}
+</style>
+</head>
+<body>
+
+
+<main>
+
+<h1>从 Mirror Descent 到 Muon：正交化背后的近端几何</h1>
+
+<br>
+
+<p class="lead blue">
+Muon 是当前备受关注的优化器，其核心的正交化操作已有不少基于约束优化视角的解释。然而，一个自然的问题是：Muon 本身是一个无约束优化器，能否直接从纯粹的无约束优化框架中自然地导出其正交化操作？本文从 Mirror Descent 的视角出发，给出了一个简洁的答案——关键在于一类由梯度自身诱导的 Proximal Geometry。更进一步，我们发现，Muon 并非孤立的存在，而是更广泛的谱变换优化器家族中的一个特例。
+</p>
+
+<h2 id="sec1">Muon：撼动 Adam 王朝的新优化器</h2>
+<p>2024 年底，Muon 横空出世<sup><a href="#ref-jordan2024muon">[1]</a></sup>。</p>
+<p>在此之前，Adam 及其变体 AdamW 已经主导了深度学习优化近十年。从早期的深度神经网络到如今的大规模 Transformer，几乎所有主流模型的训练都离不开 Adam 系列优化器。Muon 的出现，第一次真正撼动了这种长期稳定的格局。</p>
+<p>短短不到两年，Muon 已经被用于训练 Kimi K3<sup><a href="#ref-team2026kimi">[2]</a></sup>、GLM-5<sup><a href="#ref-zeng2026glm">[3]</a></sup>、DeepSeek V4<sup><a href="#ref-xu2026deepseek">[4]</a></sup> 等超大规模前沿基础模型。据月之暗面创始人杨植麟透露，相比 Adam，Muon 可带来约 <strong>2 倍的 token efficiency</strong><sup><a href="#ref-nvidia2026">[5]</a></sup> 提升，即达到相同训练效果所需的训练 token 减少约一半。回顾优化器的发展历史，一个新优化器能够如此迅速获得关注并进入前沿基础模型训练，实属罕见。</p>
+<p>令人意外的是，Muon 的核心操作出奇地简单。对于一个矩阵形式的梯度动量 \(M \in \mathbb{R}^{m \times n}\)，设其奇异值分解（SVD）为</p>
+\[ M = U\Sigma V^\top, \]
+<p>Muon 所做的事情可以概括为：将这个矩阵正交化，得到</p>
+\[ UV^\top, \]
+<p>即抹去 SVD 中的奇异值，或者等价地，将它们全部置为一，然后沿着这个方向更新参数。</p>
+<p><em>仅此而已。</em></p>
+<p>但恰恰是这个看似简单的「正交化」，让 Muon 展现出了惊人的能力，大幅提升了 Transformer 模型训练的效率和最终效果。</p>
+
+<h2 id="sec2">正交化的解释：漂亮，但有一个缺口</h2>
+<p>Muon 的巨大成功，让人不禁好奇：如此有效的正交化操作，究竟是怎么来的？</p>
+<p>其中一个经典的解释是，Muon 的正交化操作可以被理解为 Frank–Wolfe（或 Conditional Gradient）中的<strong>线性最小化 Oracle</strong>（Linear Minimization Oracle, LMO）<sup><a href="#ref-pethick2025">[6]</a></sup>。</p>
+<p>具体来说，对于当前的梯度矩阵 \(G_t \in \mathbb{R}^{m \times n}\)，在谱范数球（Spectral Norm Ball）上进行线性最小化：</p>
+\[ \operatorname*{argmin}_{\|W\|_2 \leq 1} \; \langle G_t, W \rangle. \]
+<p>若 \(G_t = U\Sigma V^\top\)，那么这个问题的解恰好为</p>
+\[ W_t = -UV^\top, \]
+<p>即梯度的正交化方向（符号取决于更新方向的约定）。</p>
+<p>换句话说，<strong>Muon 的正交化操作，正好对应于矩阵谱范数球上的 LMO。</strong></p>
+<p>更早的工作则从最速下降（Steepest Descent）的角度出发，将 Muon 的正交化解释为矩阵谱范数下的最速下降方向<sup><a href="#ref-bernstein2025">[7]</a></sup>。值得一提的是，这一思路的源头可以追溯到 2015 年、与 Adam 同期的 Spectral Descent 工作<sup><a href="#ref-carlson2015">[8]</a></sup>。这两种解释虽然出发点不同，却殊途同归，都指向了同一个核心：<strong>谱范数约束自然地产生了 Muon 的正交化操作。</strong></p>
+<p>这些工作漂亮地回答了「<strong>正交化是怎么来的</strong>」这一问题，但也留下了一个微妙的缺口：</p>
+<div class="callout">
+  <p>谱范数球本质上是一个<strong>约束集</strong>，而 Muon 在实际训练中——无论是 Kimi K3，还是 DeepSeek V4，又或者是其他——本身却是一个<strong>无约束优化器</strong>。实际算法既没有显式维护 \(\|W\|_2 \leq \eta\) 这样的约束，更没有在每一步将参数投影回某个约束集的操作。</p>
+</div>
+<p>当然，相关工作也尝试将 Frank–Wolfe 这一经典约束优化方法进一步推广到无约束优化框架中<sup><a href="#ref-pethick2025">[6]</a></sup>。然而，从理解 Muon 的角度来看，这类解释似乎仍然隔了一层，不够直接：我们需要先人为引入一个并不存在于实际训练过程中的谱范数约束，再借助这一约束的几何性质解释正交化操作为何会出现。此外，矩阵的谱范数球本身并不是一种特别直观的几何对象，从谱范数约束推导出正交化的数学过程也并不容易理解。于是，一个更本质的问题便浮现出来：</p>
+
+<div class="question">
+  <p>既然 Muon 本身是无约束的，那么它的正交化是否可以直接从一个纯粹的无约束优化框架中自然地产生？</p>
+</div>
+
+<h2 id="sec3">Mirror Descent 的「魔法」</h2>
+<p>沿着无约束的视角继续往下走，我们很自然地想到了 Mirror Descent<sup><a href="#ref-nemirovski1983problem">[9]</a></sup>。它的巧妙之处就在于：许多看起来是在<strong>对梯度进行特定变换</strong>的操作，其实都可以被重新理解为——<strong>在一个由 Bregman Divergence（Bregman 散度）定义的非欧几何空间中，沿着最自然的方向前进。</strong>在 Mirror Descent 中，这种由 Bregman Divergence 定义的几何结构，通常被称为 <strong>Proximal Geometry</strong>。标准的 Gradient Descent 本身就是 Mirror Descent 的一个特例：当 Proximal Geometry 由欧氏距离所对应的 Bregman 散度刻画时，Mirror Descent 便退化为 Gradient Descent；而当其由 KL 散度刻画时，则可导出经典的 Exponentiated Gradient<sup><a href="#ref-hazan2016oco">[10]</a></sup>。
+<p>这揭示了一个深刻的视角转换：与其追问优化器「<strong>对梯度做了什么加工</strong>」，不如反过来问——</p>
+<blockquote><p><strong>它究竟选择了什么样的 Proximal Geometry？</strong></p></blockquote>
+<p>那么，Muon 对梯度所做的正交化，是否也对应着某种特定的 proximal geometry，使得相应的 Mirror Descent 更新恰好等价于对梯度进行正交化？</p>
+<p><em>答案出奇地简洁。</em></p>
+
+<h2 id="sec4">矩阵 Online Mirror Descent 框架</h2>
+<p>为了在矩阵空间中研究这一几何视角，我们先将 Mirror Descent 推广到矩阵参数，为此，我们采用更现代的 Online Mirror Descent（OMD）框架。传统的 OMD 主要面向向量参数；对于矩阵参数，更自然的做法不是将矩阵拉直成高维向量，而是直接在矩阵空间中定义 Proximal Geometry。基于文献 Matrix AdaGrad<sup><a href="#ref-zhang2026omd">[11]</a></sup> 提出的<strong>矩阵 OMD（OMD for Matrices）</strong>框架，我们直接以矩阵为决策变量，在矩阵空间中定义近端函数（Proximal Function）及其对应的 Bregman Divergence。具体而言，矩阵 OMD 的迭代形式可以写为：</p>
+\[ X_{t+1} = \operatorname*{argmin}_X \left\{ \eta \langle G_t, X \rangle_F + B_\psi(X; X_t) \right\}, \]
+<p>其中 \(\langle \cdot, \cdot \rangle_F\) 是 Frobenius 内积，\(\psi\) 是定义在矩阵空间上的近端函数，决定了优化的几何结构，而 \(B_\psi\) 是由 \(\psi\) 诱导的 Bregman Divergence：</p>
+\[B_\psi(X; Y) = \psi(X) - \psi(Y) - \langle \nabla\psi(Y),\, X - Y \rangle_F.\]
+
+<h3>行方向几何与列方向几何近端函数  </h3>
+<p>接下来，我们来看矩阵空间中常见的近端函数。一个典型而重要的选择是<strong>行方向几何（Row-wise Geometry）</strong>。给定对称正定的度量矩阵 \(A \in \mathbb{R}^{m \times m}\)，定义近端函数：</p>
+\[ \psi_A(X) = \tfrac{1}{2} \langle X, AX \rangle_F = \tfrac{1}{2} \operatorname{Tr}(X^\top A X). \]
+<p>这是关于 \(X \in \mathbb{R}^{m \times n}\) 的二次函数，其梯度为 \(\nabla\psi_A(X) = AX\)。代入 Bregman Divergence 的定义，得到：</p>
+\[ B_{\psi_A}(X; Y) = \tfrac{1}{2} \langle X - Y,\, A (X - Y) \rangle_F = \tfrac{1}{2} \|X - Y\|_A^2, \]
+<p>即一个以 \(A\) 为权重的矩阵 Mahalanobis 平方距离。当 \(A\) 取对角阵时，上述几何退化为对每一行分别独立加权，既计算高效，又保留了矩阵结构。对称地，通过右乘度量矩阵 \(B \in \mathbb{R}^{n \times n}\) 可以定义<strong>列方向几何（Column-wise Geometry）</strong>，即 \(\psi_B(X) = \tfrac{1}{2}\langle X, XB \rangle_F\)。</p>
+<p>现在，关键的问题就变成了：</p> 
+<div class="question">
+  <p>如果我们希望 Muon 的正交化操作能够从具有某种 proximal geometry 的 OMD 中自然导出，那么其相应的 proximal function 应该具有怎样的形式？</p>
+</div>
+
+<h2 id="sec5">梯度诱导的 Proximal Function</h2>
+<p>答案出奇地简洁：<strong>从梯度自身的 Gram 结构出发，构造一个由其诱导的 proximal function。</strong></p>
+<p>具体而言，对于矩阵梯度 \(G_t \in \mathbb{R}^{m \times n}\)，我们考虑其 Gram 矩阵，并取其主平方根（Principal Square Root，即唯一的对称半正定平方根）。当 \(m \le n\) 时，采用<strong>行 Gram 矩阵</strong>：</p>
+\[ C_t = \left( G_t G_t^\top \right)^{1/2}, \]
+<p>当 \(m &gt; n\) 时，则对称地采用列 Gram 矩阵 \(G_t^\top G_t\)，后续推导类似，结论不变。为聚焦于本文的核心思想，以下统一采用行 Gram 的形式，并假设 \(C_t\) 非奇异。对于梯度低秩导致的奇异情形，在后续涉及 \(C_t\) 求逆时采用 Moore–Penrose 伪逆即可，核心结论仍然成立，相关技术细节不再过多展开。由 \(C_t\) 定义的行方向几何近端函数（Row-wise Proximal Function）如下：</p>
+\[ \psi_t(X) = \tfrac{1}{2} \langle X, C_t X \rangle_F.\]
+<p>值得注意的是，该近端函数并非固定不变，而是一个时变的近端函数（Time-varying Proximal Function），其几何结构由当前梯度 \(G_t\) 诱导，并随迭代动态变化。基于这一 proximal function 构造的 OMD，便可以自然地导出矩阵正交化操作。在给出具体推导之前，我们先来理解 Gram 结构究竟编码了怎样的几何信息。</p>
+
+<h3>理解 \(G_t G_t^\top\)</h3>
+<p>矩阵 \(G_t G_t^\top\) 是 \(G_t\) 各行向量组成的 Gram 矩阵：</p>
+\[ \left( G_t G_t^\top \right)_{ij} = \langle G_{t(i)},\, G_{t(j)} \rangle. \]
+<p>其对角元度量每一行的能量大小，非对角元则编码行与行之间的相关性——它把「行梯度方向各自多强、彼此的相似度」压缩成一个对称矩阵，自然描述了当前梯度在行空间上诱导出的几何结构。</p>
+<p>设 \(G_t = U_t \Sigma_t V_t^\top\)，利用 \(V_t^\top V_t = I\) 立即得到：</p>
+\[ G_t G_t^\top = U_t \Sigma_t^2 U_t^\top. \]
+<p>取其主平方根，并利用谱分解展开，我们得到：</p>
+\[ C_t = \left( G_t G_t^\top \right)^{1/2} = U_t \Sigma_t U_t^\top = \sum_{k=1}^{r} \sigma_{t,k}\, u_{t,k}\, u_{t,k}^\top,\]
+<p>其中 \(r\) 是矩阵的秩。这个分解让 \(C_t\) 的几何结构变得清晰：左奇异向量 \(u_{t,1}, \dots, u_{t,r}\) 两两正交，且满足 \(C_t u_{t,k} = \sigma_{t,k}\, u_{t,k}\)，因此在每个方向\(u_{t,k}\)上，\(C_t\) 的作用彼此解耦，沿该方向独立地缩放。于是，左奇异向量给出了 \(C_t\) 所定义度量的正交主方向（主坐标系），对应的奇异值 \(\sigma_{t,1}, \dots, \sigma_{t,r}\) 则决定了各方向上的度量尺度——奇异值越大，沿该方向产生相同幅度的偏移，在相应的 Bregman Divergence 中所产生的代价（Cost）就越大。</p>
+
+<p>对比 \(G_t\) 本身更能看出 \(C_t\) 的特殊性：\(G_t\) 的作用一般会将方向偏转，而 \(C_t\) 是<strong>不含任何旋转的纯拉伸</strong>。事实上，二者相差的恰是一个纯旋转矩阵：</p>
+\[ G_t = C_t \left( U_t V_t^\top \right), \]
+<p>其中 \(U_t V_t^\top\) 是正交矩阵。也就是说，\(G_t\) 的作用可以分解为两步：先由 \(U_t V_t^\top\) 给出旋转，再沿\(C_t\)主方向进行纯拉伸。因此 \(C_t\) 恰好提取了 \(G_t\) 中的拉伸成分，完全剥离了旋转。</p>
+
+<h2 id="sec6">从近端几何到正交化</h2>
+
+<p>由 \(C_t\) 定义的近端函数 \(\psi_t(X)\) 所诱导的无约束 Online Mirror Descent 更新为</p>
+\[ X_{t+1} = \operatorname*{argmin}_X \left\{ \eta \langle G_t, X \rangle_F + B_{\psi_t}(X; X_t) \right\}, \]
+<p>其中 \(B_{\psi_t}(X; X_t) = \tfrac{1}{2} \langle X - X_t,\, C_t (X - X_t) \rangle_F\).</p>
+<p>对目标函数求一阶导数，并令其为零，得到最优性条件</p>
+\[ \eta G_t + C_t(X_{t+1} - X_t) = 0. \]
+<p>因此，OMD 的迭代公式可以写为</p>
+\[ X_{t+1} = X_t - \eta C_t^{-1} G_t. \]
+<p>根据 \(C_t = (G_t G_t^\top)^{1/2} = U_t \Sigma_t U_t^\top\)，有</p>
+\[ C_t^{-1} = U_t \Sigma_t^{-1} U_t^\top. \]
+<p>代入梯度的奇异值分解 \(G_t = U_t \Sigma_t V_t^\top\)，便得到</p>
+\[
+\begin{aligned}
+C_t^{-1} G_t
+&= U_t \Sigma_t^{-1} U_t^\top \, U_t \Sigma_t V_t^\top \\
+&= U_t V_t^\top.
+\end{aligned}
+\]
+<p>至此，我们从无约束的 OMD 更新中自然地推导出了正交化操作。需要注意的是，这里得到的是对梯度 \(G_t\) 的正交化；若要完全对应 Muon 中的正交化操作，只需将 \(G_t\) 替换为动量矩阵 \(M_t\) 即可。此外，基于列空间 Gram 矩阵 \(G_t^\top G_t\) 也可以进行完整的类似推导，我们将其留给感兴趣的读者。</p>  
+
+<h3>奇异值尺度抵消机制</h3>
+<p>下面我们再来仔细体会一下，奇异值尺度是如何被完全抵消的。这一抵消机制在左奇异向量构成的主坐标系中尤为清晰。\(C_t\) 在 Bregman Divergence 中扮演「度量」（Proximal Metric）的角色，决定了沿不同主方向（左奇异向量）移动所需付出的代价。将它与梯度本身的谱尺度进行对比，可以看到：</p>
+<ul class="points"> 
+<li>梯度 \(G_t\) 的奇异值尺度由 \(\Sigma_t\) 给出；</li> 
+<li>度量矩阵 \(C_t = U_t\Sigma_t U_t^\top\) 在相同的主方向具有完全一致的尺度；</li>
+<li>OMD 更新中的逆度量 \(C_t^{-1}\) 则引入 \(\Sigma_t^{-1}\)，恰好抵消梯度中的奇异值尺度，即 \(\Sigma_t^{-1}\Sigma_t=I\)。</li>
+</ul>
+<p>最终，更新中只留下 \(U_tV_t^\top\)，即梯度的极分解（Polar Decomposition）中的正交因子（Orthogonal Factor）。由此可见，正交化的关键在于<strong>梯度与 proximal function 的度量矩阵之间的尺度匹配</strong>：逆度量恰好抵消梯度的奇异值尺度，使更新不再依赖各奇异值的大小。如果两者的尺度不匹配，更新中便会保留相应的奇异值信息。</p>
+
+<h2 id="sec7">Beyond Muon：从正交化到一般谱变换</h2>
+<p>前面的推导表明，Muon 的正交化可以理解为特定 proximal geometry 下的 OMD 更新结果。这一视角也启发了一个更一般的设计原则：</p>
+<blockquote><p><strong>通过选择不同的矩阵 proximal geometry，可以实现对梯度奇异值的不同变换。</strong></p></blockquote>
+
+<h3>幂次度量：连续可调的谱变换族</h3>
+<p>首先，考虑将度量矩阵推广为</p>
+\[ C_t = \left( G_t G_t^\top \right)^\alpha. \]
+<p>由于 \(G_t G_t^\top = U_t \Sigma_t^2 U_t^\top\)，因此</p>
+\[ C_t = U_t \Sigma_t^{2\alpha} U_t^\top. \]
+<p>相应的 OMD 更新为</p>
+\[ X_{t+1} = X_t - \eta\, C_t^{-1} G_t = X_t - \eta\, U_t \Sigma_t^{1-2\alpha} V_t^\top. \]
+<p>通过调整 \(\alpha\)，我们可以改变更新中奇异值的缩放方式。几个特殊取值对应着不同的谱变换：</p>
+<style>
+  .spec-table { border-collapse: collapse; margin: 1em auto; }
+  .spec-table th, .spec-table td {
+    border: 1px solid #999; padding: 6px 16px; text-align: left;
+  }
+  .spec-table th { background: #f0f0f0; font-weight: bold; }
+  .spec-table .hl { background: #fff3cd; font-weight: bold; }
+</style>
+
+<table class="spec-table">
+  <thead>
+    <tr><th>参数 \(\alpha\)</th><th>奇异值变换</th><th>对应情形</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>\(0\)</td><td>\(\sigma_i \mapsto \sigma_i\)</td><td>保留原始梯度</td></tr>
+    <tr><td>\(0 < \alpha < \tfrac{1}{2}\)</td><td>\(\sigma_i \mapsto \sigma_i^{\,1-2\alpha}\)</td><td>正幂变换，压缩奇异值差异</td></tr>
+    <tr class="hl"><td>\(\tfrac{1}{2}\)</td><td>\(\sigma_i \mapsto 1\)</td><td>Muon 正交化</td></tr>
+    <tr><td>\(\tfrac{1}{2} < \alpha < 1\)</td><td>\(\sigma_i \mapsto \sigma_i^{\,1-2\alpha}\)</td><td>负幂变换，增强小奇异值的相对权重</td></tr>
+    <tr><td>\(1\)</td><td>\(\sigma_i \mapsto \sigma_i^{-1}\)</td><td>奇异值取倒数</td></tr>
+    <tr><td>\(\alpha > 1\)</td><td>\(\sigma_i \mapsto \sigma_i^{\,1-2\alpha}\)</td><td>更强的负幂变换</td></tr>
+  </tbody>
+</table>
+<p>当 \(\alpha = 0\) 时，更新保留原始梯度；随着 \(\alpha\) 从 \(0\) 增大到 \(\tfrac{1}{2}\)，奇异值之间的相对差异逐渐缩小；当 \(\alpha = \tfrac{1}{2}\) 时，所有非零奇异值都被归一化为 \(1\)，得到 \(U_t V_t^\top\)，即 Muon 的正交化更新。当 \(\alpha > \tfrac{1}{2}\) 时，变换进入负幂区域，小奇异值获得更大的相对权重；特别地，\(\alpha = 1\) 对应奇异值取倒数。</p>
+<p>通过上面的分析，可以看到，随着幂指数 \(\alpha\) 的变化，我们得到了一族连续可调的谱变换，而 Muon 的正交化只是其中一个特殊情形。由此，一个自然的问题是：\(\alpha=\frac{1}{2}\) 对应的正交化是否就是最优的谱变换？其他幂次，乃至更一般的谱变换，是否能带来更好的优化效果？这一问题非常本质，值得进一步深入探索。</p>
+
+<h3>针对特定奇异值的差异化处理</h3>
+<p>上述幂次变换对所有奇异值采用相同的处理。我们还可以进一步放宽这一限制，根据奇异值的大小，为不同奇异值设计不同的缩放方式。例如，可以只对最大的奇异值进行特殊处理，而将其余奇异值全部归一化为 \(1\)。设</p>
+\[ \Sigma_t = \operatorname{diag}(\sigma_1, \sigma_2, \ldots, \sigma_r), \qquad \sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_r > 0. \]
+<p>我们可以指定目标变换</p>
+\[ D_t = \operatorname{diag}\left( s(\sigma_1), 1, \ldots, 1 \right), \]
+<p>其中 \(s(\sigma_1)\) 控制最大奇异值在更新中保留的幅度。对应的更新方向为</p>
+\[ U_t D_t V_t^\top. \]
+<p>当 \(s(\sigma_1) = 1\) 时，所有奇异值均被归一化，退化为 Muon 的标准正交化；当 \(s(\sigma_1) \neq 1\) 时，则保留最大奇异值的特定幅度信息，同时将其余奇异值归一化。这样的设计能够在保留整体正交化结构的同时，对最主要的谱方向进行有针对性的调整。</p>
+
+<h3>统一形式：任意谱变换</h3>
+<p>从更一般的角度，我们可以将上述设计统一表示为</p>
+\[ C_t = U_t\, h(\Sigma_t)\, U_t^\top, \]
+<p>其中 \(h\) 作用于各个奇异值，并要求 \(h(\sigma_i) > 0\)。此时，OMD 更新中的梯度变换为</p>
+\[ C_t^{-1} G_t = U_t\, h(\Sigma_t)^{-1} U_t^\top \, U_t \Sigma_t V_t^\top = U_t \left[ \Sigma_t\, h(\Sigma_t)^{-1} \right] V_t^\top. \]
+<p>幂次形式 \(h(\sigma) = \sigma^{2\alpha}\) 是其中一个简单而直观的特例；而分段函数或针对特定奇异值定义的规则，则允许我们构造更灵活的谱变换。</p>
+<p>因此，<strong>Muon 的正交化并不是这一框架所能产生的唯一结果，而是一个具有鲜明几何意义的特殊情形。</strong>从统一的幂次缩放，到针对特定奇异值的差异化处理，矩阵 Mirror Descent下的 proximal geometry 为设计更广泛的谱变换型优化方法提供了一个统一的视角。</p>
+<!-- 结语 -->
+<div class="closing">
+<h2 id="sec8">结语</h2>
+<p>从「谱范数球上的 LMO」到「梯度诱导的 proximal geometry」，对 Muon 正交化的理解完成了一次视角转换：不再需要人为引入一个实际训练中并不存在的约束集，正交化直接从一个纯粹的无约束 Mirror Descent 框架中自然产生——它是<strong>梯度与度量矩阵之间奇异值尺度恰好抵消</strong>的产物，也只是谱变换族 \(\alpha = \tfrac{1}{2}\) 处的一个特殊取值。这一视角既还原了 Muon，也打开了设计更一般谱变换型优化器的大门。</p>
+</div>
+<!-- 参考文献区块：插入在致谢区之后、<footer> 之前 -->
+
+<div class="cite-block">
+  <h2 id="cite">引用本文</h2>
+<pre><code>@misc{WpMirror2026,
+  author = {Wenpeng Zhang},
+  title  = {Deriving Muon From Mirror Descent: The Proximal Geometry Behind Orthogonalization},
+  year   = {2026},
+  url    = {https://your-blog-url.example/muon-mirror-descent}
+}</code></pre>
+</div> 
+
+  <section class="references" id="references">
+    <h2>参考文献</h2>
+    <ol>
+      <li id="ref-jordan2024muon">
+        K. Jordan. <em>Muon: An optimizer for hidden layers in neural networks.</em> 2024.
+        <a href="https://kellerjordan.github.io/posts/muon/" target="_blank" rel="noopener">[link]</a>
+      </li>
+  
+      <li id="ref-team2026kimi">
+        Kimi Team, T. Bai, Y. Bai, Y. Bao, et al. <em>Kimi K3: Open frontier intelligence.</em>
+        arXiv preprint arXiv:2607.24653, 2026.
+        <a href="https://arxiv.org/abs/2607.24653" target="_blank" rel="noopener">[link]</a>
+      </li>
+  
+      <li id="ref-zeng2026glm">
+        A. Zeng, X. Lv, Z. Hou, et al. <em>GLM-5: From vibe coding to agentic engineering.</em>
+        arXiv preprint arXiv:2602.15763, 2026.
+        <a href="https://arxiv.org/abs/2602.15763" target="_blank" rel="noopener">[link]</a>
+      </li>
+  
+      <li id="ref-xu2026deepseek">
+        A. Xu, B. Lin, B. Xue, et al. <em>DeepSeek-V4: Towards highly efficient million-token context intelligence.</em>
+        arXiv preprint arXiv:2606.19348, 2026.
+        <a href="https://arxiv.org/abs/2606.19348" target="_blank" rel="noopener">[link]</a>
+      </li>
+  
+      <li id="ref-nvidia2026">
+        Z. Yang. <em>Token efficiency of the Muon optimizer in large-scale training.</em>
+        NVIDIA GTC 2026.
+        <a href="https://www.nvidia.com/en-us/on-demand/session/gtc26-s81695/" target="_blank" rel="noopener">[link]</a>
+      </li>
+  
+      <li id="ref-pethick2025">
+        T. Pethick, W. Xie, K. Antonakopoulos, Z. Zhu, A. Silveti-Falls, and V. Cevher.
+        <em>Training deep learning models with norm-constrained LMOs.</em>
+        In International Conference on Machine Learning (ICML), 2025.
+        <a href="https://proceedings.mlr.press/v267/pethick25a.html" target="_blank" rel="noopener">[link]</a>
+      </li>
+  
+      <li id="ref-bernstein2025">
+        J. Bernstein. <em>Deriving Muon.</em> 2025.
+        <a href="https://jeremybernste.in/writing/deriving-muon" target="_blank" rel="noopener">[link]</a>
+      </li>
+
+      <li id="ref-carlson2015">
+        Carlson, David, Volkan Cevher, and Lawrence Carin.
+        <em>Stochastic Spectral Descent for Restricted Boltzmann Machines.</em>
+        In International Conference on Artificial Intelligence and Statistics (AISTATS), 2015.
+        <a href="https://proceedings.mlr.press/v38/carlson15.pdf" target="_blank" rel="noopener">[link]</a>
+      </li>
+
+      <li id="ref-nemirovski1983problem">
+        Nemirovski, Arkadi S. and Yudin, David B.
+        <em>Problem Complexity and Method Efficiency in Optimization. <em>Wiley-Interscience</em>, 1983.
+        <a href="https://www2.isye.gatech.edu/~nemirovs/Nemirovskii_Yudin_1983.pdf" target="_blank" rel="noopener">[link]</a>
+      </li>
+
+      <li id="ref-hazan2016oco">
+        E. Hazan. Introduction to online convex optimization. <em>Foundations and Trends in Optimization</em>, 2(3–4):157–325, 2016.
+        <a href="https://arxiv.org/abs/1909.05207" target="_blank" rel="noopener">[link]</a>
+      </li>
+
+  
+      <li id="ref-zhang2026omd">
+        W. Zhang, R. Yu, and P. Zhao. <em>Matrix AdaGrad: Row-wise and column-wise adaptive subgradient methods.</em>
+        arXiv preprint arXiv:2609.21815, 2026.
+        <a href="https://arxiv.org/abs/2609.21815" target="_blank" rel="noopener">[link]</a>
+      </li>
+    </ol>
+  </section>
+  
+</main>
+
+<a href="#" class="totop" id="totop">↑</a>
+
+<script>
+// 回到顶部按钮显隐
+const totop = document.getElementById('totop');
+window.addEventListener('scroll', () => {
+  totop.classList.toggle('show', window.scrollY > 600);
+}, { passive: true });
+</script>
+
+</body>
+</html>
