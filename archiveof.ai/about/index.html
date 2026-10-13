@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — ArchiveOf.ai</title>
+  <meta name="description" content="About archiveof.ai — a personal archive of technical writing on optimization, model architecture, and the mathematics behind AI." />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #faf9f6;
+      --ink: #1c2b3a;
+      --ink-soft: #5c6b7a;
+      --line: #e3e0d8;
+      --accent: #1f5e8c;
+      --accent-warm: #c25e2e;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Inter", sans-serif;
+      line-height: 1.75;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+    /* ===== Header（和主页结构一致） ===== */
+    header {
+      border-bottom: 1px solid var(--line);
+      padding: 56px 0 32px;
+      margin-bottom: 48px;
+    }
+    .top-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .site-title {
+      font-family: "Newsreader", Georgia, serif;
+      font-size: 2rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .site-title a { color: var(--ink); text-decoration: none; }
+    .site-title .dot { color: var(--accent-warm); }
+    .about-link {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--accent-warm);
+      text-decoration: none;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--accent-warm);
+      padding-bottom: 1px;
+    }
+    .tagline {
+      margin-top: 6px;
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+    }
+    nav {
+      margin-top: 20px;
+      display: flex;
+      gap: 24px;
+    }
+    nav a {
+      color: var(--ink-soft);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      padding-bottom: 2px;
+    }
+    nav a:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ===== 正文 ===== */
+    h2 {
+      font-family: "Newsreader", Georgia, serif;
+      font-size: 1.7rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+    main p {
+      color: var(--ink-soft);
+      max-width: 640px;
+      margin-bottom: 18px;
+      font-size: 1rem;
+    }
+    main p a { color: var(--accent); text-decoration: none; }
+    main p a:hover { text-decoration: underline; }
+
+    /* ===== Footer ===== */
+    footer {
+      border-top: 1px solid var(--line);
+      margin-top: 72px;
+      padding: 28px 0 48px;
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+    }
+    footer a { color: var(--ink-soft); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="top-row">
+      <h1 class="site-title"><a href="/">About<span class="dot"></span></a></h1>
+    </div>
+    
+</header>
+
+<main class="wrap">
+
+  <p>
+    I'm Wenppeng Zhang. This site is a personal archive of my technical writing, covering optimization, model architectures, the mathematics behind AI, and occasional reflections on the history of the field.
+  </p>
+
+  <p>
+    Each post is available in both English and Chinese. Feedback and discussion
+    are welcome at <a href="mailto:zhangwenpeng0@gmail.com">zhangwenpeng0@gmail.com</a>.
+  </p>
+
+</main>
+
+</body>
+</html>
