@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArchiveOf.ai</title>
+  <meta name="description" content="Research notes on optimization, model architecture, the mathematics behind AI and the history of AI." />
+
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- KaTeX for math in excerpts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+
+  <style>
+    :root {
+      --paper:      #faf9f6;   /* warm off-white */
+      --paper-alt:  #f1efe9;   /* card background */
+      --ink:        #1c2b3a;   /* deep ink blue */
+      --ink-soft:   #5c6b7a;   /* secondary text */
+      --line:       #e3e0d8;   /* hairline borders */
+      --accent:     #1f5e8c;   /* muted deep blue */
+      --accent-warm:#c25e2e;   /* burnt orange, sparingly */
+      --code-bg:    #eef1f4;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Inter", system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+    /* ---------- Header ---------- */
+    header {
+      border-bottom: 1px solid var(--line);
+      padding: 56px 0 32px;
+      margin-bottom: 48px;
+    }
+    /* 站名与 About 同一行，About 靠右 */
+    .top-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    /* About 小字入口 */
+    .about-link {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--accent-rust);
+      text-decoration: none;
+      white-space: nowrap;
+      border-bottom: 1px solid transparent;
+      padding-bottom: 1px;
+    }
+    .about-link:hover { border-color: var(--accent-warm); }
+
+    .site-title {
+      font-family: "Newsreader", Georgia, serif;
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .site-title a { color: var(--ink); text-decoration: none; }
+    .site-title .dot { color: var(--accent-warm); }
+    .tagline {
+      margin-top: 6px;
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+    }
+    nav { margin-top: 20px; display: flex; gap: 24px; }
+    nav a {
+      color: var(--ink-soft);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      padding-bottom: 2px;
+    }
+    nav a:hover, nav a.active { color: var(--accent); border-color: var(--accent); }
+
+    /* ---------- Section headings ---------- */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent-warm);
+      margin-bottom: 20px;
+    }
+
+    /* ---------- Article cards ---------- */
+    article {
+      background: var(--paper-alt);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 28px 30px;
+      margin-bottom: 24px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    article:hover {
+      border-color: var(--accent);
+      box-shadow: 0 2px 12px rgba(31, 94, 140, 0.07);
+    }
+    .post-title {
+      font-family: "Newsreader", Georgia, serif;
+      font-size: 1.45rem;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .post-title a { color: var(--ink); text-decoration: none; }
+    .post-title a:hover { color: var(--accent); }
+
+    .post-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: center;
+      margin: 10px 0 14px;
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .badge.en  { background: var(--accent); color: #fff; }
+    .badge.zh  { background: var(--accent-warm); color: #fff; }
+    .badge.tag { background: var(--code-bg); color: var(--ink-soft);
+                 border: 1px solid var(--line); font-weight: 500; }
+
+    .post-abstract {
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+    }
+    .post-abstract em { font-family: "Newsreader", Georgia, serif; }
+
+    .lang-links {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+      display: flex;
+      gap: 18px;
+      font-size: 0.88rem;
+    }
+    .lang-links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .lang-links a:hover { text-decoration: underline; }
+    .lang-links .divider { color: var(--line); }
+
+    /* ---------- About / footer ---------- */
+    section.about { margin: 56px 0 64px; }
+    section.about p { color: var(--ink-soft); font-size: 0.95rem; max-width: 640px; }
+    section.about a { color: var(--accent); }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 28px 0 48px;
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    footer a { color: var(--ink-soft); }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 560px) {
+      header { padding: 40px 0 24px; }
+      .site-title { font-size: 1.6rem; }
+      article { padding: 22px 20px; }
+    }
+  </style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    renderMathInElement(document.body, {
+      delimiters: [
+        { left: "$$",  right: "$$",  display: true  },
+        { left: "\\(", right: "\\)", display: false },
+        { left: "\\[", right: "\\]", display: true  },
+        { left: "$",   right: "$",   display: false }
+      ],
+      throwOnError: false
+    });
+  });
+</script>
+
+</head>
+<body>
+<!-- KaTeX：渲染 LaTeX 公式 -->
+
+
+<header>
+  <div class="wrap">
+    <div class="top-row">
+      <h1 class="site-title"><a href="/">ArchiveOf<span class="dot">.ai</span></a></h1>
+      <a class="about-link" href="/about/">About</a>
+    </div>
+    <p class="tagline">Research notes on optimization, model architecture and the mathematics behind AI.</p>
+    <nav>
+      <a href="/" class="active">Posts</a>
+    </nav>
+  </div>
+</header>
+
+
+<main class="wrap">
+
+  <div class="section-label">Recent Posts</div>
+
+  <!-- ============ Post 1 ============ -->
+  <article>
+    <h2 class="post-title">
+      <a href="/posts/muon_mirror_descent/">Deriving Muon From Mirror Descent: The Proximal Geometry Behind Orthogonalization</a>
+    </h2>
+    <div class="post-meta">
+      <span>Aug 2026</span>
+      <span class="badge tag">Optimization</span>
+      <span class="badge tag">Muon</span>
+      <span class="badge tag">Mirror Descent</span>
+    </div>
+    <p class="post-abstract">
+      Muon’s orthogonalization has traditionally been understood through constrained optimization, such as Frank-Wolfe under spectral norm constraints.
+      Yet Muon itself is an unconstrained optimizer. This post develops an alternative derivation from unconstrained Online Mirror Descent (OMD), 
+      showing how orthogonalization emerges naturally from a gradient-induced proximal geometry defined by the gradient’s Gram matrix. 
+      Under this geometry, the inverse metric cancels the gradient’s singular values, leaving only its orthogonal factor. 
+      This derivation further reveals that orthogonalization is a special case \(\alpha = \frac{1}{2}\) within a continuous family of spectral transformations.
+    </p>
+    <div class="lang-links">
+      <a href="/posts/muon_mirror_descent">Read in English →</a>
+      <span class="divider">|</span>
+      <a href="/zh/posts/muon_mirror_descent/">阅读中文版 →</a>
+    </div>
+  </article>
+
+  <!-- ============ Template for future posts ============
+  <article>
+    <h2 class="post-title">
+      <a href="/posts/next-post/">Next Post Title</a>
+    </h2>
+    <div class="post-meta">
+      <span>Month 2026</span>
+      <span class="badge tag">Topic</span>
+    </div>
+    <p class="post-abstract">One or two sentence summary…</p>
+    <div class="lang-links">
+      <a href="/posts/next-post/">Read in English →</a>
+      <span class="divider">|</span>
+      <a href="/zh/posts/next-post/">阅读中文版 →</a>
+    </div>
+  </article>
+  ============ End template ============ -->
+
+  <footer>
+    <span>© 2026 archiveof.ai</span>
+    <span>
+      <a href="mailto:zhangwenpeng0@gmail.com">Email</a>
+    </span>
+  </footer>
+
+</main>
+
+<!-- KaTeX: renders the math in the abstract -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'\\\\(',right:'\\\\)',display:false},{left:'\\\\[',right:'\\\\]',display:true}]});"></script>
+</body>
+</html>
