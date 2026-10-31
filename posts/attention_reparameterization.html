@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rethinking Self-Attention Parameterization: Decoupling Self- and Cross-Token Interactions · ArchiveOf.ai</title>
+<meta name="description" content="Rethinking Self-Attention Parameterization: Decoupling Self- and Cross-Token Interactions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://fastly.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+:root{
+  --paper:#faf9f6; --card:#f1efe9; --fg:#1c2b3a; --muted:#5c6b7a;
+  --brand:#0466f8; --brand-soft:#e9eff4; --brand-border:#d6e1ea;
+  --accent:#0f62fe; --border:#e3e0d8; --code-bg:#eef1f4;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--fg);
+  font-family:'Inter','Noto Sans SC',sans-serif;
+  font-size:16px;line-height:1.85;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ===== 顶栏：全程可见的回家路 ===== */
+.topbar{position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+
+.topbar-inner{max-width:760px;margin:0 auto;padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Newsreader',Georgia,serif;font-weight:600;
+  font-size:1.15em;letter-spacing:-0.01em}
+.logo a{color:var(--fg)}
+.logo .dot{color:#ba4907}       /* 换成任意色值 */
+.topbar nav{display:flex;gap:20px;font-size:0.88em}
+.topbar nav a{color:var(--muted)}
+.topbar nav a:hover{color:var(--fg);text-decoration:none}
+
+/* ===== 文章容器 ===== */
+main{max-width:760px;margin:0 auto;padding:48px 24px 64px}
+
+/* ===== 文章头：栏目 · 日期 · 标签 ===== */
+.article-head{margin-bottom:44px}
+.kicker{font-size:0.75rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.14em;color:var(--accent);margin-bottom:14px}
+
+.meta-row{display:flex;justify-content:space-between;align-items:center;
+  gap:12px;flex-wrap:wrap;margin:6px 0 30px}
+.date{font-family:'JetBrains Mono',monospace;font-size:0.8em;
+  color:var(--muted);font-variant-numeric:tabular-nums;
+  letter-spacing:0.03em}
+.tags{display:flex;gap:8px;flex-wrap:wrap}
+
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;
+  font-size:0.72rem;font-weight:600;letter-spacing:0.04em;
+  background:var(--brand);color:#fff}
+.tag{display:inline-block;padding:1px 9px;border-radius:999px;
+  font-size:0.72rem;font-weight:500;background:var(--code-bg);
+  color:var(--muted);border:1px solid var(--border)}
+h1{font-family:'Newsreader',Georgia,serif;font-size:1.9em;
+  line-height:1.35;font-weight:600;letter-spacing:-0.01em;
+  margin:0 0 20px}
+@media(max-width:640px){h1{font-size:1.45em}}
+.lead{font-size:1.08em;color:var(--muted);line-height:1.9;
+  border-left:3px solid var(--accent);padding:2px 0 2px 18px;
+  margin:0}
+.article-head::after{content:'';display:block;
+  border-bottom:1px solid var(--border);margin-top:36px}
+
+/* ===== 正文排版 ===== */
+h2{font-family:'Newsreader',Georgia,serif;font-size:1.5em;
+  font-weight:600;margin:2.6em 0 1em;letter-spacing:-0.01em;
+  scroll-margin-top:80px}
+h3{font-size:1.08em;font-weight:600;margin:2.2em 0 0.8em}
+p{margin:1em 0;text-align:justify}
+strong{font-weight:700}
+.question-box {
+    margin: 24px 0;
+    padding: 14px 20px;
+    border-left: 4px solid var(--accent);
+    background: var(--code-bg);
+    border-radius: 0 8px 8px 0;
+  }
+  .question-box p { margin: 6px 0; }
+
+em{font-family:'Newsreader',Georgia,serif;font-style:normal;font-weight:600;color:#0466f8}
+
+ul.points{list-style:none;padding:0;margin:1.2em 0}
+ul.points li{position:relative;padding-left:22px;margin:0.8em 0}
+ul.points li::before{content:'';position:absolute;left:4px;top:0.85em;
+  width:6px;height:6px;border-radius:50%;background:var(--brand)}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:1.4em 0}
+ol.steps li{counter-increment:s;position:relative;padding-left:40px;margin:1em 0}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:4px;
+  width:24px;height:24px;border-radius:8px;background:var(--brand-soft);
+  color:var(--brand);font-weight:700;font-size:0.8em;
+  display:flex;align-items:center;justify-content:center}
+.callout{margin:1.8em 0;padding:18px 22px;background:var(--card);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:12px}
+.callout .cap{font-size:0.78em;font-weight:700;color:var(--accent);
+  letter-spacing:0.08em;margin-bottom:6px}
+.callout p{margin:0.4em 0}
+blockquote{margin:1.6em 0;padding:14px 22px;background:var(--card);
+  border-left:3px solid var(--brand);border-radius:0 10px 10px 0}
+blockquote p{margin:0}
+mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;padding:2px 0}
+
+table{width:100%;border-collapse:separate;border-spacing:0;
+  margin:1.8em 0;font-size:0.92em;
+  background:#fffdf9;border:1px solid var(--border);border-radius:12px}
+th,td{padding:11px 16px;text-align:left}
+th{background:#eae7df;font-weight:600;color:var(--muted);
+  font-size:0.88em;letter-spacing:0.03em;
+  border-bottom:1px solid var(--border)}
+th:first-child{border-top-left-radius:11px}
+th:last-child{border-top-right-radius:11px}
+td{border-bottom:1px solid rgba(227,224,216,.6)}
+tr:last-child td{border-bottom:none}
+tr:last-child td:first-child{border-bottom-left-radius:11px}
+tr:last-child td:last-child{border-bottom-right-radius:11px}
+tr.hl td{background:#f6e7dc;font-weight:600}
+td:first-child{font-family:'JetBrains Mono',monospace;font-size:0.95em}
+
+
+th,td{padding:11px 16px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--code-bg);font-weight:600;color:var(--muted);
+  font-size:0.88em;letter-spacing:0.03em}
+tr:last-child td{border-bottom:none}
+tr.hl td{background:var(--brand-soft);font-weight:600}
+td:first-child{font-family:'JetBrains Mono',monospace;font-size:0.95em}
+
+/* ===== 文末区：引用 + 返回导航 ===== */
+.closing{margin-top:3em;padding-top:2em;border-top:1px solid var(--border)}
+.ack{background:var(--code-bg);border:1px solid var(--border);
+  border-radius:12px;padding:20px 24px;margin-top:2em;font-size:0.92em}
+.ack h3{margin-top:0}
+.ack code{font-family:'JetBrains Mono',monospace;font-size:0.85em;
+  background:var(--paper);padding:1px 5px;border-radius:4px}
+
+/* 返回导航：playbook 式的收束 */
+.end-nav{max-width:760px;margin:44px auto 0;padding:20px 24px;
+  border-top:1px solid var(--border);display:flex;
+  justify-content:center}
+.back-link{display:inline-flex;align-items:center;gap:8px;
+  font-weight:500;font-size:0.95em;color:var(--accent)}
+.back-link:hover{text-decoration:none;color:#a34a20}
+
+.next-hint{color:var(--muted);font-size:0.88em;font-style:italic;
+  font-family:'Newsreader',Georgia,serif}
+
+/* ===== 页脚（与首页一致） ===== */
+.site-footer{border-top:1px solid var(--border);
+  max-width:760px;margin:0 auto;padding:26px 24px 44px;
+  font-size:0.84em;color:var(--muted);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.site-footer a{color:var(--muted)}
+.site-footer a:hover{color:var(--brand)}
+
+/* ===== 回到顶部 ===== */
+.totop{position:fixed;right:max(24px,calc(50vw - 356px));bottom:24px;
+  width:40px;height:40px;border-radius:10px;background:var(--card);
+  border:1px solid var(--border);color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1em;box-shadow:0 2px 8px rgba(0,0,0,.06);opacity:0;
+  pointer-events:none;transition:opacity .2s;cursor:pointer}
+.totop.show{opacity:1;pointer-events:auto}
+
+
+/* 页脚翻页导航：760px 居中容器 + 内部左右分布 */
+.end-nav {
+  max-width: 760px;
+  margin: 44px auto 0;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;  /* 容器内贴边分布 */
+  align-items: center;
+  font-size: 0.95em;
+}
+.next-link.is-disabled,
+.prev-link.is-disabled {
+  color: var(--accent);
+  cursor: default;
+  pointer-events: none;        /* 彻底屏蔽所有鼠标交互 */
+}
+
+.prev-link, .next-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+}
+.prev-link:hover, .next-link:hover {
+  text-decoration: underline;
+}
+
+/* Back to Home：沿用原有样式 */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 0.95em;
+  color: var(--accent);
+}
+.back-link:hover { text-decoration: none; color: #0466f8; }
+
+/* ---------- Code ---------- */
+pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 22px 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  code {
+    font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  p code, li code, td code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.85em;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  .c { color: #8a8a8a; font-style: italic; } /* comment */
+  .k { color: #a626a4; }                    /* keyword */
+  .f { color: #4078f2; }                    /* function */
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="logo"><a href="/">ArchiveOf<span class="dot">.ai</span></a></div>
+    <nav>
+    </nav>
+  </div>
+</div>
+
+<style>
+  .post-title {
+      margin-bottom: 3.6rem;
+  }
+  .post-abstract {
+    position: relative;
+    padding: 0rem 0rem;        /* 保持原样，文字空间完全不变 */
+    background: #f6f8fa;
+    border-radius: 6px;
+    box-shadow: none;          /* 删掉 box-shadow，竖线交给 ::before 画 */
+}
+.post-abstract::before {
+    content: "";
+    position: absolute;
+    left: -10px;               /* 线画在色块左外侧，完全不占文字空间 */
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #0466f8;
+}
+
+  </style>
+
+<main>
+  
+<!-- ================= Header ================= -->
+  
+<h1>Rethinking Self-Attention Parameterization: Decoupling Self- and Cross-Token Interactions</h1>
+
+<blockquote>
+  <p><strong>Work in Progress</strong> — This article is an ongoing exploration
+  of the topic. Further analysis, experiments, and discussions will be added.</p>
+</blockquote>
+
+  <h2>1. Starting Point: Two Types of Token Interactions</h2>
+  
+  <p>The Query-Key interaction is the central mechanism of self-attention. Given an
+  input sequence \(X\in\mathbb{R}^{n\times d}\), a standard Transformer first projects
+  it into queries and keys</p>
+  \[
+  Q=XW_Q,\quad K=XW_K,
+  \]
+  <p>where \(W_Q,W_K\in\mathbb{R}^{d\times d}\) are the projection matrices for query
+  and key, respectively. The attention score matrix is then computed as</p>
+  \[
+  S=QK^\top=XW_QW_K^\top X^\top.
+  \]
+  <p>The bilinear form \(x_iW_QW_K^\top x_j^\top\) is the classic and natural
+  parameterization of pairwise interactions, and one rarely questions whether it is
+  equally suitable for every entry of \(S\).</p>
+
+  <p>A closer examination, however, reveals an important distinction. The off-diagonal
+  entries of \(S\) capture interactions <i>between distinct tokens</i>, whereas the diagonal
+  entries measure the interaction of <i>each token with itself</i>. Although both are computed
+  using the same unified formula, their underlying mathematical structures are
+  fundamentally different.</p>
+  
+  <p>For interactions between distinct tokens (\(i\neq j\)), the score is a general
+    bilinear form</p>
+    \[
+    s_{ij}=x_iW_QW_K^\top x_j^\top,
+    \]
+  <p>which is in general asymmetric — the score from token \(i\) to token \(j\)
+    is typically not equal to the score in the reverse direction, i.e., </p> 
+    \[
+    x_iW_QW_K^\top x_j^\top \;\ne\; x_jW_QW_K^\top x_i^\top.
+    \]
+  <p>In fact, prior studies have shown that such asymmetric or directional attention
+    pattern naturally emerges in autoregressive Transformers and plays an important
+    role in their information processing<sup><a href="#ref-saponati2025underlying">[1]</a></sup>.
+    Mechanistic circuit analysis has also clarified this point, showing that
+    the query and key subspaces serve distinct, asymmetric roles in in-context
+    learning<sup><a href="#ref-olsson2022context">[2]</a>,<a href="#ref-quazi2025induction">[3]</a></sup>.</p>
+
+  <p>However, when the query and key correspond to the same token (\(i=j\)), the score becomes a quadratic form
+\[ s_{ii}=x_iW_QW_K^\top x_i^\top, \]
+where the same input token \(x_i\) appears on both sides. Intuitively, there should be no asymmetry in a token's interaction with itself.
+                
+<h2>2. Self-Interaction Scores Depend Only on the Symmetric Component</h2>
+
+<p>To better understand the distinction between self-interactions and interactions between distinct tokens, we decompose
+\(W_QW_K^\top\) into its symmetric and skew-symmetric components.
+For notational convenience, let</p>
+\[
+A = W_QW_K^\top.
+\]
+
+<p>We decompose \(A\) into its symmetric and skew-symmetric components as</p>
+\[
+A = A_{\mathrm{sym}} + A_{\mathrm{skew}},
+\]
+<p>where</p>
+\[
+A_{\mathrm{sym}} = \frac{A+A^\top}{2},
+\quad
+A_{\mathrm{skew}} = \frac{A-A^\top}{2}.
+\]
+<p>By construction, \(A_{\mathrm{sym}}\) is symmetric, satisfying
+\(A_{\mathrm{sym}}^\top=A_{\mathrm{sym}}\), while
+\(A_{\mathrm{skew}}\) is skew-symmetric, satisfying
+\(A_{\mathrm{skew}}^\top=-A_{\mathrm{skew}}\).
+</p>
+
+<p>A particularly interesting property emerges when the query and key come from the same token. 
+  For any vector \(x\in\mathbb{R}^{1\times d}\), the quadratic form associated with a skew-symmetric matrix is always zero</p>
+\[
+xA_{\mathrm{skew}}x^\top = 0.
+\]
+<p>To see this, note that the scalar \(xA_{\mathrm{skew}}x^\top\) is equal to its transpose</p>
+\[
+xA_{\mathrm{skew}}x^\top
+=
+\left(xA_{\mathrm{skew}}x^\top\right)^\top
+=
+xA_{\mathrm{skew}}^\top x^\top
+=
+-xA_{\mathrm{skew}}x^\top.
+\]
+<p>Therefore, it must be zero. Consequently, the self-interaction score can be written entirely in terms of the symmetric component</p>
+\[
+s_{ii} =x_iAx_i^\top=x_i(A_{\mathrm{sym}}+A_{\mathrm{skew}})x_i^\top=x_iA_{\mathrm{sym}}x_i^\top.
+\]
+
+<p>This leads to the following important observation.</p>
+
+<blockquote>
+  <strong>For self-interactions, the skew-symmetric component of \(W_QW_K^\top\) is functionally redundant: although it is important
+    for parameterizing interactions between distinct tokens, it contributes nothing to the self-interaction attention score.</strong>
+</blockquote>
+
+  <h2>3. Optimization Friction: Redundancy and Implicit Gradient Conflicts</h2>
+
+  <p>The analysis above reveals that standard attention
+    parameterization is not as flawless or seamless as traditionally assumed.
+    Mathematically, the parameterization is very sound: while it contains
+    redundant parameters, their contribution is identically zero. However, when
+    viewed through the lens of optimization, this setup exposes deeper structural
+    friction. Specifically, while \(W_Q W_K^\top\) unifies both self- and
+    cross-token interactions under a single formulation, this shared
+    parameterization introduces optimization inefficiencies during gradient-based
+    learning.</p>
+    
+    <ol>
+      <li><strong>Parameter Redundancy in Self-Interactions.</strong>
+      As established, the skew-symmetric component \(A_{\mathrm{skew}}\) is
+      completely inert on the diagonal (\(xA_{\mathrm{skew}}x^\top = 0\)).
+      This creates parameter redundancy where a subset of the model's capacity
+      contributes zero expressive value to self-interactions, yet still remains
+      active in cross-token interactions.</li>
+    
+      <li><strong>Implicit Multi-Objective Gradient Conflict.</strong>
+      The symmetric component \(A_{\mathrm{sym}}\) is forced to simultaneously
+      accommodate two distinct optimization objectives: modeling
+      self-interactions (\(s_{ii}\)) and capturing directional cross-token
+      relations (\(s_{ij}\)). When these two objective demand opposing update
+      directions, they create implicit multi-objective gradient conflicts. This
+      shared parameterization leads to gradient interference and therefore impairs
+      optimization efficiency.</li>
+    </ol>
+    
+    <p>These issues demonstrate that the current attention parameterization—though seemingly
+      unproblematic—creates structural friction during training. This motivates us
+      to rethink and redesign a more effective attention parameterization.</p>
+    
+
+  <h2>4. A Decoupled Parameterization Strategy</h2>
+
+  <p>Motivated by the preceding observation and analysis, we propose a simple modification to the
+  attention score parameterization. The key idea is to assign different
+  parameterizations to the two types of interactions:</p>
+  
+  <ul>
+    <li><strong>Inter-token interactions:</strong> retain the standard query–key
+    bilinear form.</li>
+    <li><strong>Self-interactions:</strong> replace the standard quadratic form with
+    a lightweight, feature-wise parameterization.</li>
+  </ul>
+  
+  <p>Specifically, we introduce an additional learnable vector \(v\in\mathbb{R}^d\)
+  and replace the self-interaction score with a feature-wise quadratic form</p>
+  \[
+  s_{ii}=\sum_{k=1}^{d}v_k\,x_{ik}^2,
+  \]
+  or equivalently,
+  \[
+  s_{ii}=x_i\operatorname{diag}(v)\,x_i^\top.
+  \]
+  <p>The complete parameterization is therefore</p>
+  <div class="boxed-equation">
+  \[
+  s_{ij}=
+  \begin{cases}
+  x_iW_QW_K^\top x_j^\top, & i\neq j,\\[6pt]
+  x_i\operatorname{diag}(v)\,x_i^\top, & i=j.
+  \end{cases}
+  \]
+  </div>
+
+  <p>In this formulation, each component of \(v\) acts as an independent gate on the
+    corresponding feature dimension, fully disentangling the self-interaction score
+    from \(W_Q\) and \(W_K\). This decoupling eliminates the gradient conflicts
+    identified in the previous section, as the two families of scores now receive
+    gradients through entirely separate parameters.</p>
+    
+  
+  <h2>References</h2>
+
+<ol class="references">
+  <li id="ref-saponati2025underlying">
+    Matteo Saponati, Pascal Sager, Pau Vilimelis Aceituno, Thilo Stadelmann,
+    Benjamin Grewe. <em>The underlying structures of self-attention: symmetry,
+    directionality, and emergent dynamics in Transformer training.</em>
+    In International Conference on Machine Learning (ICML), 2025.
+    <a href="https://arxiv.org/abs/2502.10927" target="_blank" rel="noopener">[link]</a>
+  </li>
+
+  <li id="ref-cho2026balancing">
+    Hyunmin Cho, Woo Kyoung Han, Kyong Hwan Jin. <em>Balancing fidelity and
+    diversity in diffusion models via symmetric attention decomposition:
+    Hopfield perspective.</em> In International Conference on Machine Learning
+    (ICML), 2026.
+    <a href="https://arxiv.org/abs/2605.27476" target="_blank" rel="noopener">[link]</a>
+  </li>
+
+  <li id="ref-olsson2022context">
+    Catherine Olsson, Nelson Elhage, Neel Nanda, et al. <em>In-context learning
+    and induction heads.</em> Transformer Circuits Thread, 2022.
+    <a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html" target="_blank" rel="noopener">[link]</a>
+  </li>
+
+  <li id="ref-quazi2025induction">
+    Salman Quazi. <em>Induction heads: The circuit behind in-context learning.</em>
+    Blog post, 2025.
+    <a href="https://www.salmanq.com/blog/induction-heads/" target="_blank" rel="noopener">[link]</a>
+  </li>
+</ol>
+
+
+  <div class="end-nav">
+    <a class="prev-link" href="muon_weight_decay.html">Previous &larr;</a>
+    <a class="back-link" href="/">Back to Home</a>
+    <a class="next-link is-disabled">&rarr; Next</a>
+    
+  </div>
+  
+  
+<footer class="site-footer">
+<span>© 2026 archiveof.ai</span>
+</footer>
+  
+<button class="totop" id="totop" aria-label="Back to top">↑</button>
+<script>
+const t=document.getElementById('totop');
+addEventListener('scroll',()=>t.classList.toggle('show',scrollY>600));
+t.onclick=()=>scrollTo({top:0,behavior:'smooth'});
+</script>  
+</body>
+</html>
