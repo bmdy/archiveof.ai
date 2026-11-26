@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triton Flash Attention Kernel for Decoupled Attention · ArchiveOf.ai</title>
+<meta name="description" content="Triton Flash Attention Kernel for Decoupled Attention.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://fastly.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+:root{
+  --paper:#faf9f6; --card:#f1efe9; --fg:#1c2b3a; --muted:#5c6b7a;
+  --brand:#0466f8; --brand-soft:#e9eff4; --brand-border:#d6e1ea;
+  --accent:#0f62fe; --border:#e3e0d8; --code-bg:#eef1f4;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--fg);
+  font-family:'Inter','Noto Sans SC',sans-serif;
+  font-size:16px;line-height:1.85;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ===== 顶栏：全程可见的回家路 ===== */
+.topbar{position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.topbar-inner{max-width:760px;margin:0 auto;padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Newsreader',Georgia,serif;font-weight:600;
+  font-size:1.15em;letter-spacing:-0.01em}
+.logo a{color:var(--fg)}
+.logo .dot{color:var(--accent)}
+.topbar nav{display:flex;gap:20px;font-size:0.88em}
+.topbar nav a{color:var(--muted)}
+.topbar nav a:hover{color:var(--fg);text-decoration:none}
+
+/* ===== 文章容器 ===== */
+main{max-width:760px;margin:0 auto;padding:48px 24px 64px}
+
+/* ===== 文章头：栏目 · 日期 · 标签 ===== */
+.article-head{margin-bottom:44px}
+.kicker{font-size:0.75rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.14em;color:var(--accent);margin-bottom:14px}
+
+.meta-row{display:flex;justify-content:space-between;align-items:center;
+  gap:12px;flex-wrap:wrap;margin:6px 0 30px}
+.date{font-family:'JetBrains Mono',monospace;font-size:0.8em;
+  color:var(--muted);font-variant-numeric:tabular-nums;
+  letter-spacing:0.03em}
+.tags{display:flex;gap:8px;flex-wrap:wrap}
+
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;
+  font-size:0.72rem;font-weight:600;letter-spacing:0.04em;
+  background:var(--brand);color:#fff}
+.tag{display:inline-block;padding:1px 9px;border-radius:999px;
+  font-size:0.72rem;font-weight:500;background:var(--code-bg);
+  color:var(--muted);border:1px solid var(--border)}
+h1{font-family:'Newsreader',Georgia,serif;font-size:1.9em;
+  line-height:1.35;font-weight:600;letter-spacing:-0.01em;
+  margin:0 0 20px}
+@media(max-width:640px){h1{font-size:1.45em}}
+.lead{font-size:1.08em;color:var(--muted);line-height:1.9;
+  border-left:3px solid var(--accent);padding:2px 0 2px 18px;
+  margin:0}
+.article-head::after{content:'';display:block;
+  border-bottom:1px solid var(--border);margin-top:36px}
+
+/* ===== 正文排版 ===== */
+h2{font-family:'Newsreader',Georgia,serif;font-size:1.5em;
+  font-weight:600;margin:2.6em 0 1em;letter-spacing:-0.01em;
+  scroll-margin-top:80px}
+h3{font-size:1.08em;font-weight:600;margin:2.2em 0 0.8em}
+p{margin:1em 0;text-align:justify}
+strong{font-weight:700}
+.question-box {
+    margin: 24px 0;
+    padding: 14px 20px;
+    border-left: 4px solid var(--accent);
+    background: var(--code-bg);
+    border-radius: 0 8px 8px 0;
+  }
+  .question-box p { margin: 6px 0; }
+
+em{font-family:'Newsreader',Georgia,serif;font-style:normal;font-weight:600;color:#0466f8}
+
+ul.points{list-style:none;padding:0;margin:1.2em 0}
+ul.points li{position:relative;padding-left:22px;margin:0.8em 0}
+ul.points li::before{content:'';position:absolute;left:4px;top:0.85em;
+  width:6px;height:6px;border-radius:50%;background:var(--brand)}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:1.4em 0}
+ol.steps li{counter-increment:s;position:relative;padding-left:40px;margin:1em 0}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:4px;
+  width:24px;height:24px;border-radius:8px;background:var(--brand-soft);
+  color:var(--brand);font-weight:700;font-size:0.8em;
+  display:flex;align-items:center;justify-content:center}
+.callout{margin:1.8em 0;padding:18px 22px;background:var(--card);
+  border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:12px}
+.callout .cap{font-size:0.78em;font-weight:700;color:var(--accent);
+  letter-spacing:0.08em;margin-bottom:6px}
+.callout p{margin:0.4em 0}
+blockquote{margin:1.6em 0;padding:14px 22px;background:var(--card);
+  border-left:3px solid var(--brand);border-radius:0 10px 10px 0}
+blockquote p{margin:0}
+mjx-container{overflow-x:auto;overflow-y:hidden;max-width:100%;padding:2px 0}
+
+table{width:100%;border-collapse:separate;border-spacing:0;
+  margin:1.8em 0;font-size:0.92em;
+  background:#fffdf9;border:1px solid var(--border);border-radius:12px}
+th,td{padding:11px 16px;text-align:left}
+th{background:#eae7df;font-weight:600;color:var(--muted);
+  font-size:0.88em;letter-spacing:0.03em;
+  border-bottom:1px solid var(--border)}
+th:first-child{border-top-left-radius:11px}
+th:last-child{border-top-right-radius:11px}
+td{border-bottom:1px solid rgba(227,224,216,.6)}
+tr:last-child td{border-bottom:none}
+tr:last-child td:first-child{border-bottom-left-radius:11px}
+tr:last-child td:last-child{border-bottom-right-radius:11px}
+tr.hl td{background:#f6e7dc;font-weight:600}
+td:first-child{font-family:'JetBrains Mono',monospace;font-size:0.95em}
+
+
+th,td{padding:11px 16px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--code-bg);font-weight:600;color:var(--muted);
+  font-size:0.88em;letter-spacing:0.03em}
+tr:last-child td{border-bottom:none}
+tr.hl td{background:var(--brand-soft);font-weight:600}
+td:first-child{font-family:'JetBrains Mono',monospace;font-size:0.95em}
+
+/* ===== 文末区：引用 + 返回导航 ===== */
+.closing{margin-top:3em;padding-top:2em;border-top:1px solid var(--border)}
+.ack{background:var(--code-bg);border:1px solid var(--border);
+  border-radius:12px;padding:20px 24px;margin-top:2em;font-size:0.92em}
+.ack h3{margin-top:0}
+.ack code{font-family:'JetBrains Mono',monospace;font-size:0.85em;
+  background:var(--paper);padding:1px 5px;border-radius:4px}
+
+/* 返回导航：playbook 式的收束 */
+.end-nav{max-width:760px;margin:44px auto 0;padding:20px 24px;
+  border-top:1px solid var(--border);display:flex;
+  justify-content:center}
+.back-link{display:inline-flex;align-items:center;gap:8px;
+  font-weight:500;font-size:0.95em;color:var(--accent)}
+.back-link:hover{text-decoration:none;color:#a34a20}
+
+.next-hint{color:var(--muted);font-size:0.88em;font-style:italic;
+  font-family:'Newsreader',Georgia,serif}
+
+/* ===== 页脚（与首页一致） ===== */
+.site-footer{border-top:1px solid var(--border);
+  max-width:760px;margin:0 auto;padding:26px 24px 44px;
+  font-size:0.84em;color:var(--muted);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.site-footer a{color:var(--muted)}
+.site-footer a:hover{color:var(--brand)}
+
+/* ===== 回到顶部 ===== */
+.totop{position:fixed;right:max(24px,calc(50vw - 356px));bottom:24px;
+  width:40px;height:40px;border-radius:10px;background:var(--card);
+  border:1px solid var(--border);color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1em;box-shadow:0 2px 8px rgba(0,0,0,.06);opacity:0;
+  pointer-events:none;transition:opacity .2s;cursor:pointer}
+.totop.show{opacity:1;pointer-events:auto}
+
+
+/* 页脚翻页导航：760px 居中容器 + 内部左右分布 */
+.end-nav {
+  max-width: 760px;
+  margin: 44px auto 0;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;  /* 容器内贴边分布 */
+  align-items: center;
+  font-size: 0.95em;
+}
+.next-link.is-disabled,
+.prev-link.is-disabled {
+  color: var(--accent);
+  cursor: default;
+  pointer-events: none;        /* 彻底屏蔽所有鼠标交互 */
+}
+
+.prev-link, .next-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+}
+.prev-link:hover, .next-link:hover {
+  text-decoration: underline;
+}
+
+/* Back to Home：沿用原有样式 */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 0.95em;
+  color: var(--accent);
+}
+.back-link:hover { text-decoration: none; color: #0466f8; }
+
+/* ---------- Code ---------- */
+pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 22px 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  code {
+    font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  p code, li code, td code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.85em;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  .c { color: #8a8a8a; font-style: italic; } /* comment */
+  .k { color: #a626a4; }                    /* keyword */
+  .f { color: #4078f2; }                    /* function */
+
+  .code-block { position: relative }
+  .copy-btn {
+    position: absolute; top: 8px; right: 8px; z-index: 10;
+    padding: 4px 12px;
+    font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500;
+    color: #5c6b7a;
+    background: #fffdf9;
+    border: 1px solid #e3e0d8;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: all 0.15s ease;
+  }
+  .copy-btn:hover {
+    opacity: 1; color: #0466f8; border-color: #0466f8;
+  }
+  .copy-btn.copied {
+    color: #0a8f4a; border-color: #0a8f4a;
+  }  
+
+</style>
+
+
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="logo"><a href="/">ArchiveOf<span class="dot">.ai</span></a></div>
+    <nav>
+    </nav>
+  </div>
+</div>
+
+<style>
+  .post-title {
+      margin-bottom: 3.6rem;
+  }
+  .post-abstract {
+    position: relative;
+    padding: 0rem 0rem;        /* 保持原样，文字空间完全不变 */
+    background: #f6f8fa;
+    border-radius: 6px;
+    box-shadow: none;          /* 删掉 box-shadow，竖线交给 ::before 画 */
+}
+.post-abstract::before {
+    content: "";
+    position: absolute;
+    left: -10px;               /* 线画在色块左外侧，完全不占文字空间 */
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #0466f8;
+}
+
+  </style>
+
+<main>
+  
+<!-- ================= Header ================= -->
+<header class="post-header">
+  <h1 class="post-title">Triton Flash Attention Kernel for Decoupled Attention: The Forward Pass</h1>
+  <div class="post-abstract">
+      <p>
+        In the previous post, we introduced a decoupled parameterization of self-attention that separates
+        self- and cross-token interactions through independent parameter sets. In this post, we explore
+        an efficient FlashAttention implementation of this parameterization. The key idea is to tile the
+        newly introduced self-interaction parameters in the same way as the query tokens, enabling self-interaction
+        scores to be computed alongside the standard query-key interactions within each query block.
+      </p>
+  </div>
+  </header>
+  
+  
+  <h2>Decoupled Attention in Triton: The Forward Pass</h2>
+    
+  <div class="code-block">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+  <pre><code><span class="k">import</span> torch
+<span class="k">import</span> triton
+<span class="k">import</span> triton.language <span class="k">as</span> tl
+    
+    
+<span class="f">@triton.jit</span>
+<span class="k">def</span> <span class="f">decoupled_attn_fwd_kernel</span>(
+    <span class="c"># --------------------------------------------------</span>
+    <span class="c"># Input / Output tensors</span>
+    <span class="c"># --------------------------------------------------</span>
+    q, <span class="c">        # Query: [B, T, HQ, DIM_QK]</span>
+    k, <span class="c">        # Key: [B, T, H, DIM_QK]</span>
+    a, <span class="c">        # Self-interaction: [B, T, HQ, DIM_A]</span>
+    v, <span class="c">        # Value: [B, T, H, DIM_V]</span>
+    o, <span class="c">        # Output: [B, T, HQ, DIM_V]</span>
+
+    <span class="c"># ----------------------------------------------------------</span>
+    <span class="c"># Attention parameters</span>
+    <span class="c"># ----------------------------------------------------------</span>
+    scale_qk, <span class="c"> # Scaling factor for cross-token interaction</span>
+    scale_a, <span class="c">  # Scaling factor for self-token interaction</span>
+
+    <span class="c"># ------------------------------------------------------------</span>
+    <span class="c"># Model dimensions</span>
+    <span class="c"># ------------------------------------------------------------</span>
+    T, <span class="c">                     # Sequence length (runtime parameter)</span>
+    B: tl.constexpr, <span class="c">       # Batch size (compile-time constant)</span>
+    HQ: tl.constexpr, <span class="c">      # Number of Query heads</span>
+    H: tl.constexpr, <span class="c">       # Number of KV heads</span>
+    G: tl.constexpr, <span class="c">       # GQA group size = HQ // H</span>
+    DIM_QK: tl.constexpr, <span class="c">  # Query / Key dimension (per head)</span>
+    DIM_A: tl.constexpr, <span class="c">   # Self-interaction dimension</span>
+    DIM_V: tl.constexpr, <span class="c">   # Value dimension</span>
+
+    <span class="c"># ------------------------------------------------------------------------</span>
+    <span class="c"># Triton tile dimensions</span>
+    <span class="c"># - Tiling is applied along q/k/a/v tokens, and value features</span>
+    <span class="c"># - No feature tiling is applied for q/k/a</span>
+    <span class="c"># ------------------------------------------------------------------------</span>
+    BT: tl.constexpr, <span class="c"># Query token block size</span>
+    BS: tl.constexpr, <span class="c"># Key / Value token block size</span>
+    BV: tl.constexpr, <span class="c"># Value feature block size</span>
+):
+    <span class="c"># ----------------------------------------------------------------------</span>
+    <span class="c"># Index Arithmetic (Program ID mapping): tile the output into [BT, BV]</span>
+    <span class="c"># ----------------------------------------------------------------------</span>
+
+    <span class="c"># Number of Value feature blocks along the DIM_V dimension</span>
+    num_v_blocks = tl.cdiv(DIM_V, BV)
+
+    <span class="c"># Decode program_id(0) into Query block index and Value block index</span>
+    <span class="c"># Query-block-major order: value block index changes faster</span>
+    pid_0 = tl.program_id(0).to(tl.int64)
+    idx_t = pid_0 // num_v_blocks
+    idx_v = pid_0 % num_v_blocks
+
+    <span class="c"># Decode program_id(1) into Batch index and Query head index</span>
+    <span class="c"># Batch-major order: query head index changes faster</span>
+    pid_1 = tl.program_id(1).to(tl.int64)
+    idx_b = pid_1 // HQ
+    idx_hq = pid_1 % HQ
+
+    <span class="c"># Map Query head to its corresponding KV head (GQA)</span>
+    <span class="c"># Each KV head is shared by G Query heads</span>
+    idx_h = idx_hq // G
+
+    <span class="c"># Reciprocal of ln(2), used to implement exp(x) via exp2(x * RCP_LN2)</span>
+    RCP_LN2: tl.constexpr = 1.4426950216
+
+    <span class="c"># Query token offsets within the current block</span>
+    offsets_q = idx_t * BT + tl.arange(0, BT)
+    <span class="c"># Query feature dimension offsets (no feature tiling)</span>
+    offsets_d = tl.arange(0, DIM_QK)
+    <span class="c"># Query pointers: [B, T, HQ, DIM_QK] -&gt; [BT, DIM_QK]</span>
+    q_ptrs = (
+        q
+        + idx_b * T * HQ * DIM_QK
+        + offsets_q[:, None] * HQ * DIM_QK
+        + idx_hq * DIM_QK
+        + offsets_d[None, :]
+    )
+    <span class="c"># Load Query tile in shape [BT, DIM_QK]</span>
+    q_mask = (offsets_q[:, None] &lt; T) &amp; (offsets_d[None, :] &lt; DIM_QK)
+    q_tile = tl.load(q_ptrs, mask=q_mask, other=0.0)
+
+    <span class="c"># Self-interaction feature dimension offsets (no feature tiling)</span>
+    offsets_a = tl.arange(0, DIM_A)
+    <span class="c"># Self-interaction pointers: [B, T, HQ, DIM_A] -&gt; [BT, DIM_A]</span>
+    <span class="c"># Note that the tiling of a (token-level) is aligned with that of q</span>
+    a_ptrs = (
+        a
+        + idx_b * T * HQ * DIM_A
+        + offsets_q[:, None] * HQ * DIM_A
+        + idx_hq * DIM_A
+        + offsets_a[None, :]
+    )
+
+    <span class="c"># Load Self-interaction tile in shape [BT, DIM_A]</span>
+    a_mask = (offsets_q[:, None] &lt; T) &amp; (offsets_a[None, :] &lt; DIM_A)
+    a_tile = tl.load(a_ptrs, mask=a_mask, other=0.0)
+    <span class="c"># Compute self-interaction logits for the tile in shape [BT]</span>
+    self_logits = tl.sum(a_tile * a_tile, axis=1) * scale_a * RCP_LN2
+
+    <span class="c"># Value feature offsets within the current block</span>
+    offsets_v = idx_v * BV + tl.arange(0, BV)
+
+    <span class="c"># Output tile accumulator: [BT, BV]</span>
+    o_tile = tl.zeros([BT, BV], dtype=tl.float32)
+    <span class="c"># Output pointers: [B, T, HQ, DIM_V] -&gt; [BT, BV]</span>
+    o_ptrs = (
+        o
+        + idx_b * T * HQ * DIM_V
+        + offsets_q[:, None] * HQ * DIM_V
+        + idx_hq * DIM_V
+        + offsets_v[None, :]
+    )
+
+    <span class="c"># Initialize Online Softmax States</span>
+    <span class="c"># Running maximum of attention logits for each query row</span>
+    running_max = tl.full(shape=[BT], value=float('-inf'), dtype=tl.float32)
+    <span class="c"># Running softmax denominator for each query row</span>
+    running_denominator = tl.zeros(shape=[BT], dtype=tl.float32)
+
+    <span class="c"># Iterate through the key blocks that are before the query block</span>
+    <span class="k">for</span> idx_k <span class="k">in</span> <span class="f">range</span>(0, idx_t * BT, BS):
+        offsets_k = idx_k + tl.arange(0, BS)
+        <span class="c"># Key pointers: [B, T, H, DIM_QK] -&gt; [DIM_QK, BS]</span>
+        k_ptrs = (
+            k
+            + idx_b * T * H * DIM_QK
+            + offsets_k[None, :] * H * DIM_QK
+            + idx_h * DIM_QK
+            + offsets_d[:, None]
+        )
+        <span class="c"># Load Key tile in shape [DIM_QK, BS]</span>
+        <span class="c"># Note that &lt; idx_t * BT implies &lt; T by idx_t = pid_0 // num_v_blocks</span>
+        k_mask = (offsets_d[:, None] &lt; DIM_QK) &amp; (offsets_k[None, :] &lt; idx_t * BT)
+        k_tile = tl.load(k_ptrs, mask=k_mask, other=0.0)
+
+        <span class="c"># Value pointers: [B, T, H, DIM_V] -&gt; [BS, BV]</span>
+        v_ptrs = (
+            v
+            + idx_b * T * H * DIM_V
+            + offsets_k[:, None] * H * DIM_V
+            + idx_h * DIM_V
+            + offsets_v[None, :]
+        )
+        <span class="c"># Load Value tile in shape [BS, BV]</span>
+        v_mask = (offsets_k[:, None] &lt; idx_t * BT) &amp; (offsets_v[None, :] &lt; DIM_V)
+        v_tile = tl.load(v_ptrs, mask=v_mask, other=0.0)
+
+        <span class="c"># Compute qk logits score for the current Q-K tile in shape [BT, BS]</span>
+        qk_logits = tl.dot(q_tile, k_tile, input_precision="ieee") * scale_qk * RCP_LN2
+        <span class="c"># Mask out invalid key positions to prevent them from contributing to softmax</span>
+        qk_logits = tl.where(offsets_k[None, :] &lt; idx_t * BT, qk_logits, float('-inf'))
+
+        <span class="c"># Online softmax: update the running maximum for every query row</span>
+        prev_max = running_max
+        running_max = tl.maximum(prev_max, tl.max(qk_logits, axis=1))
+        <span class="c"># Replace -inf with a finite value to avoid -inf - (-inf) = NaN</span>
+        safe_max = tl.where(running_max == float('-inf'), 0.0, running_max)
+        <span class="c"># Fetch the new maximum as the rescaling factor</span>
+        rescale = tl.exp2(prev_max - safe_max)
+
+        <span class="c"># Compute unnormalized softmax weights for the current Q-K tile</span>
+        softmax_numerators = tl.exp2(qk_logits - safe_max[:, None])
+        <span class="c"># Compute unnormalized running O_tile</span>
+        o_tile = o_tile * rescale[:, None] + tl.dot(softmax_numerators.to(v_tile.dtype), v_tile, input_precision="ieee")
+
+        <span class="c"># Update the accumulated softmax denominator for each query row for later use</span>
+        running_denominator = running_denominator * rescale + tl.sum(softmax_numerators, axis=1)
+
+    <span class="c"># Iterate over key blocks from the start of the query block to the end</span>
+    <span class="k">for</span> idx_k <span class="k">in</span> <span class="f">range</span>(idx_t * BT, <span class="f">tl.minimum</span>(idx_t * BT + BT, T), BS):
+        offsets_k = idx_k + tl.arange(0, BS)
+        <span class="c"># Key pointers: [B, T, H, DIM_QK] -&gt; [DIM_QK, BS]</span>
+        k_ptrs = (
+            k
+            + idx_b * T * H * DIM_QK
+            + offsets_k[None, :] * H * DIM_QK
+            + idx_h * DIM_QK
+            + offsets_d[:, None]
+        )
+        <span class="c"># Load Key tile in shape [DIM_QK, BS]</span>
+        k_mask = (offsets_d[:, None] &lt; DIM_QK) &amp; (offsets_k[None, :] &lt; <span class="f">tl.minimum</span>(idx_t * BT + BT, T))
+        k_tile = tl.load(k_ptrs, mask=k_mask, other=0.0)
+
+        <span class="c"># Compute qk logits score for the current Q-K tile in shape [BT, BS]</span>
+        qk_logits = tl.dot(q_tile, k_tile, input_precision="ieee") * scale_qk * RCP_LN2
+        <span class="c"># Replace diagonal (q == k) with self-interaction logits</span>
+        attn_logits = tl.where(offsets_q[:, None] == offsets_k[None, :], self_logits[:, None], qk_logits)
+
+        <span class="c"># Apply causal masking and exclude out-of-bound Q/K positions</span>
+        causal_mask = offsets_q[:, None] &gt;= offsets_k[None, :]
+        valid_mask = (offsets_q[:, None] &lt; T) &amp; (offsets_k[None, :] &lt; T)
+        causal_logits = tl.where(causal_mask &amp; valid_mask, attn_logits, float('-inf'))
+
+        <span class="c"># Value pointers: [B, T, H, DIM_V] -&gt; [BS, BV]</span>
+        v_ptrs = (
+            v
+            + idx_b * T * H * DIM_V
+            + offsets_k[:, None] * H * DIM_V
+            + idx_h * DIM_V
+            + offsets_v[None, :]
+        )
+        <span class="c"># Load Value tile in shape [BS, BV]</span>
+        v_mask = (offsets_k[:, None] &lt; <span class="f">tl.minimum</span>(idx_t * BT + BT, T)) &amp; (offsets_v[None, :] &lt; DIM_V)
+        v_tile = tl.load(v_ptrs, mask=v_mask, other=0.0)
+
+        <span class="c"># Online softmax: update the running maximum for every query row</span>
+        prev_max = running_max
+        running_max = tl.maximum(prev_max, tl.max(causal_logits, axis=1))
+        <span class="c"># Replace -inf with a finite value to avoid -inf - (-inf) = NaN</span>
+        safe_max = tl.where(running_max == float('-inf'), 0.0, running_max)
+        <span class="c"># Fetch the new maximum as the rescaling factor</span>
+        rescale = tl.exp2(prev_max - safe_max)
+
+        <span class="c"># Compute unnormalized softmax weights for the current Q-K tile</span>
+        softmax_numerators = tl.exp2(causal_logits - safe_max[:, None])
+        <span class="c"># Compute unnormalized running O_tile</span>
+        o_tile = o_tile * rescale[:, None] + tl.dot(softmax_numerators.to(v_tile.dtype), v_tile, input_precision="ieee")
+
+        <span class="c"># Update the accumulated softmax denominator for each query row for later use</span>
+        running_denominator = running_denominator * rescale + tl.sum(softmax_numerators, axis=1)
+
+    <span class="c"># Normalize the output using a safe denominator</span>
+    safe_denominator = tl.where(running_denominator &gt; 0.0, running_denominator, 1.0)
+    o_tile = o_tile / safe_denominator[:, None]
+
+    <span class="c"># Mask out-of-bound query positions and value dimensions</span>
+    o_mask = (offsets_q[:, None] &lt; T) &amp; (offsets_v[None, :] &lt; DIM_V)
+    <span class="c"># Store the output, whose dtype is obtained from the pointer via o_ptrs.dtype.element_ty</span>
+    tl.store(o_ptrs, o_tile.to(o_ptrs.dtype.element_ty), mask=o_mask)</code></pre>
+
+
+  <div class="end-nav">
+    <a class="prev-link" href="attention_reparameterization.html">Previous &larr;</a>
+    <a class="back-link" href="/">Back to Home</a>
+    <a class="next-link is-disabled">&rarr; Next</a>
+    
+  </div>
+  
+  
+<footer class="site-footer">
+<span>© 2026 archiveof.ai</span>
+</footer>
+  
+<button class="totop" id="totop" aria-label="Back to top">↑</button>
+<script>
+function copyCode(btn) {
+      const code = btn.parentElement.querySelector('pre code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      });
+    }
+const t=document.getElementById('totop');
+addEventListener('scroll',()=>t.classList.toggle('show',scrollY>600));
+t.onclick=()=>scrollTo({top:0,behavior:'smooth'});
+</script>
+</body>
+</html>
